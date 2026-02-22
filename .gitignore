@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+data/bien/
+data/rung/
+data/pho/
+data/dong_lua/
+data/chua/
+data/cho/
+data/nui/
+data/song/
+outputs/models/
+outputs/attention_maps/
+.DS_Store
