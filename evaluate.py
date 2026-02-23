@@ -4,10 +4,12 @@ Generates per-class metrics and confusion matrix.
 
 Usage:
     python evaluate.py
+    python evaluate.py --model-dir outputs/models/best_model
 """
 
 import argparse
 import os
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report, confusion_matrix
@@ -15,6 +17,17 @@ from tqdm import tqdm
 from transformers import ViTForImageClassification
 
 from data.prepare_dataset import load_dataset, CLASS_NAMES_VI, SCENE_CLASSES, generate_synthetic_images
+
+
+def print_confusion_matrix(cm, class_names):
+    """Display a formatted confusion matrix in the terminal."""
+    max_name_len = max(len(n) for n in class_names)
+    header = " " * (max_name_len + 2) + "  ".join(f"{n[:6]:>6}" for n in class_names)
+    print(header)
+    print("-" * len(header))
+    for i, row in enumerate(cm):
+        row_str = "  ".join(f"{v:>6}" for v in row)
+        print(f"{class_names[i]:>{max_name_len}}  {row_str}")
 
 
 def main():
@@ -58,6 +71,15 @@ def main():
     print("VIETNAMESE SCENE CLASSIFICATION — EVALUATION")
     print("=" * 60)
     print(classification_report(all_labels, all_preds, target_names=vi_names, digits=4))
+
+    # Confusion matrix
+    cm = confusion_matrix(all_labels, all_preds)
+    print("\nConfusion Matrix:")
+    print("-" * 40)
+    print_confusion_matrix(cm, vi_names)
+
+    accuracy = np.trace(cm) / np.sum(cm)
+    print(f"\nOverall Accuracy: {accuracy:.4f}")
 
 
 if __name__ == "__main__":

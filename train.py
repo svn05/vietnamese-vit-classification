@@ -9,11 +9,10 @@ Usage:
 
 import argparse
 import os
-import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from transformers import ViTForImageClassification, ViTFeatureExtractor
+from transformers import ViTForImageClassification
 from sklearn.metrics import accuracy_score, f1_score
 from tqdm import tqdm
 
