@@ -1,7 +1,7 @@
 """Prepare Vietnamese scene classification dataset.
 
 Downloads and preprocesses a scene classification dataset for ViT fine-tuning.
-Supports custom datasets or synthetic data for development.
+Supports Places365 (real images) or synthetic data for development.
 
 The dataset contains Vietnamese scene categories:
 - Biển (Beach), Rừng (Forest), Phố (City Street), Đồng lúa (Rice Paddy),
@@ -10,6 +10,7 @@ The dataset contains Vietnamese scene categories:
 
 import os
 import random
+import shutil
 import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
@@ -41,6 +42,64 @@ CLASS_NAMES_VI = {
 }
 
 NUM_CLASSES = len(SCENE_CLASSES)
+
+# Places365 category indices for our 8 Vietnamese scene classes
+PLACES365_MAPPING = {
+    48: "bien",       # /b/beach
+    150: "rung",      # /f/forest/broadleaf
+    319: "pho",       # /s/street
+    287: "dong_lua",  # /r/rice_paddy
+    330: "chua",      # /t/temple/asia
+    223: "cho",       # /m/market/outdoor
+    232: "nui",       # /m/mountain
+    288: "song",      # /r/river
+}
+
+
+def download_places365(output_dir=None, max_per_class=500):
+    """Download Places365-small validation set and extract our 8 scene classes.
+
+    Args:
+        output_dir: Where to save images (organized by class subdirs).
+        max_per_class: Maximum images per class to keep.
+    """
+    from torchvision.datasets import Places365
+    import tempfile
+
+    if output_dir is None:
+        output_dir = DATA_DIR
+
+    print("Downloading Places365-small validation set...")
+    print("(This may take a few minutes on first run)")
+
+    tmp_dir = tempfile.mkdtemp()
+    dataset = Places365(root=tmp_dir, split="val", small=True, download=True)
+
+    # Extract images for our target categories
+    counts = {cls: 0 for cls in SCENE_CLASSES}
+    target_indices = set(PLACES365_MAPPING.keys())
+
+    for idx in range(len(dataset)):
+        img, label = dataset[idx]
+        if label in target_indices:
+            cls_name = PLACES365_MAPPING[label]
+            if counts[cls_name] >= max_per_class:
+                continue
+            cls_dir = os.path.join(output_dir, cls_name)
+            os.makedirs(cls_dir, exist_ok=True)
+            img_path = os.path.join(cls_dir, f"{cls_name}_{counts[cls_name]:04d}.jpg")
+            img.save(img_path)
+            counts[cls_name] += 1
+
+    # Clean up temp dir
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    total = sum(counts.values())
+    print(f"\nExtracted {total} images across {NUM_CLASSES} classes:")
+    for cls_name in SCENE_CLASSES:
+        vi_name = CLASS_NAMES_VI[cls_name]
+        print(f"  {cls_name} ({vi_name}): {counts[cls_name]} images")
+    return counts
 
 
 def generate_synthetic_images(output_dir=None, n_per_class=100, img_size=224):
@@ -208,11 +267,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Prepare Vietnamese scene dataset")
-    parser.add_argument("--generate", action="store_true", help="Generate synthetic data")
-    parser.add_argument("--n-per-class", type=int, default=100)
+    parser.add_argument("--source", choices=["places365", "synthetic"], default="places365",
+                        help="Data source: places365 (real images) or synthetic")
+    parser.add_argument("--n-per-class", type=int, default=100,
+                        help="Images per class (synthetic) or max per class (places365)")
     args = parser.parse_args()
 
-    if args.generate:
-        generate_synthetic_images(n_per_class=args.n_per_class)
+    if args.source == "places365":
+        download_places365(max_per_class=args.n_per_class)
     else:
-        print("Use --generate to create synthetic data for testing")
+        generate_synthetic_images(n_per_class=args.n_per_class)

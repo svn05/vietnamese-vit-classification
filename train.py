@@ -98,8 +98,9 @@ def main():
 
     # Check for data
     if not os.path.exists(os.path.join(args.data_dir, SCENE_CLASSES[0])):
-        print("Dataset not found. Generating synthetic scenes...")
-        generate_synthetic_images(args.data_dir, n_per_class=100)
+        print("Dataset not found. Downloading from Places365...")
+        from data.prepare_dataset import download_places365
+        download_places365(args.data_dir, max_per_class=500)
 
     # Load dataset
     train_dataset, val_dataset, class_names = load_dataset(
